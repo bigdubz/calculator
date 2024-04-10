@@ -1,7 +1,7 @@
 use crate::TokenType::{IntLit, Plus};
 
 fn main() {
-    let input = "27/3 * 5 +13-5".parse::<String>().unwrap();
+    let input = "27/3*5+13-5".parse::<String>().unwrap();
     let tokens = tokenize(input);
     let answer = evaluate_expression(tokens);
     println!("{:?}", answer);
@@ -144,7 +144,7 @@ fn evaluate_expression(expr: Vec<Token>) -> Token {
                 }
             }
         }
-        let a = BinaryExpression {
+        expr_copy.insert(0, BinaryExpression {
             int_lit_1: Token {
                 token_type: IntLit,
                 value: buffer[0].value
@@ -157,8 +157,7 @@ fn evaluate_expression(expr: Vec<Token>) -> Token {
                 token_type: IntLit,
                 value: buffer[2].value
             }
-        }.evaluate_expr();
-        expr_copy.insert(0, a);
+        }.evaluate_expr());
         buffer.clear();
     }
 
