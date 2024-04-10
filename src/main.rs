@@ -1,7 +1,8 @@
-use crate::TokenType::{IntLit, Plus};
+use std::cmp::PartialEq;
+
 
 fn main() {
-    let input = "27/3*5+13-5".parse::<String>().unwrap();
+    let input = "2^3".parse::<String>().unwrap();
     let tokens = tokenize(input);
     let answer = evaluate_expression(tokens);
     println!("{:?}", answer);
@@ -9,6 +10,8 @@ fn main() {
 
 #[derive(Debug, Copy, Clone)]
 enum TokenType {
+    BinaryOperator,
+    Literal,
     IntLit,
     Plus,
     Minus,
@@ -19,13 +22,20 @@ enum TokenType {
     CloseParen,
 }
 
+impl PartialEq for TokenType {
+    fn eq(&self, other: &Self) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(other)
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 struct Token {
+    parent_type: TokenType,
     token_type: TokenType,
     value: Option<i32>
 }
 
-
+#[derive(Debug, Copy, Clone)]
 struct BinaryExpression {
     int_lit_1: Token,
     bin_op: Token,
@@ -34,21 +44,19 @@ struct BinaryExpression {
 
 impl BinaryExpression {
     fn evaluate_expr(&self) -> Token {
-        let val1 = self.int_lit_1.value.unwrap_or_else(|| 0);
-        let val2 = self.int_lit_2.value.unwrap_or_else(|| 0);
+        let val1 = self.int_lit_1.value.unwrap_or_else(|| { panic!() });
+        let val2 = self.int_lit_2.value.unwrap_or_else(|| { panic!() });
         return 
-        if std::mem::discriminant(&self.bin_op.token_type) ==
-            std::mem::discriminant(&Plus) {
-            Token { token_type: IntLit, value: Some(val1 + val2) }
-        } else if std::mem::discriminant(&self.bin_op.token_type) ==
-            std::mem::discriminant(&TokenType::Minus) {
-            Token { token_type: IntLit, value: Some(val1 - val2) }
-        } else if std::mem::discriminant(&self.bin_op.token_type) ==
-            std::mem::discriminant(&TokenType::Multi) {
-            Token { token_type: IntLit, value: Some(val1 * val2) }
-        } else if std::mem::discriminant(&self.bin_op.token_type) ==
-            std::mem::discriminant(&TokenType::Div) {
-            Token { token_type: IntLit, value: Some(val1 / val2) }
+        if self.bin_op.token_type == TokenType::Plus {
+            Token { parent_type: TokenType::Literal, token_type: TokenType::IntLit, value: Some(val1 + val2) }
+        } else if self.bin_op.token_type == TokenType::Minus {
+            Token { parent_type: TokenType::Literal, token_type: TokenType::IntLit, value: Some(val1 - val2) }
+        } else if self.bin_op.token_type == TokenType::Multi {
+            Token { parent_type: TokenType::Literal, token_type: TokenType::IntLit, value: Some(val1 * val2) }
+        } else if self.bin_op.token_type == TokenType::Div {
+            Token { parent_type: TokenType::Literal, token_type: TokenType::IntLit, value: Some(val1 / val2) }
+        } else if self.bin_op.token_type == TokenType::Power {
+            Token { parent_type: TokenType::Literal, token_type: TokenType::IntLit, value: Some(val1.pow(val2 as u32)) }
         } else { panic!("Not implemented") }
     }
 }
@@ -68,37 +76,35 @@ fn tokenize(input: String) -> Vec<Token> {
                 int_lit.push(peek(&input_copy).parse().unwrap());
                 input_copy = consume(&input_copy);
             }
-            tokens.push(Token {
-                token_type: IntLit,
-                value: Option::from(int_lit.parse::<i32>().unwrap_or_else(|_| panic!()))
-            })
+            tokens.push(Token { parent_type: TokenType::Literal, token_type: TokenType::IntLit, value:
+                 Option::from(int_lit.parse::<i32>().unwrap_or_else(|_| panic!())) })
         } else if peek(&input_copy) == "+" {
             // if binary operator, push the respective type and consume
-            tokens.push(Token { token_type: Plus, value: None });
+            tokens.push(Token { parent_type: TokenType::BinaryOperator, token_type: TokenType::Plus, value: Some(0) });
             input_copy = consume(&input_copy)
 
         } else if peek(&input_copy) == "-" {
-            tokens.push(Token { token_type: TokenType::Minus, value: None });
+            tokens.push(Token { parent_type: TokenType::BinaryOperator, token_type: TokenType::Minus, value: Some(0) });
             input_copy = consume(&input_copy)
 
         } else if peek(&input_copy) == "*" {
-            tokens.push(Token { token_type: TokenType::Multi, value: None });
+            tokens.push(Token { parent_type: TokenType::BinaryOperator, token_type: TokenType::Multi, value: Some(1) });
             input_copy = consume(&input_copy)
 
         } else if peek(&input_copy) == "/" {
-            tokens.push(Token { token_type: TokenType::Div, value: None });
+            tokens.push(Token { parent_type: TokenType::BinaryOperator, token_type: TokenType::Div, value: Some(1) });
             input_copy = consume(&input_copy)
 
         } else if peek(&input_copy) == "^" {
-            tokens.push(Token { token_type: TokenType::Power, value: None });
+            tokens.push(Token { parent_type: TokenType::BinaryOperator, token_type: TokenType::Power, value: Some(2) });
             input_copy = consume(&input_copy)
 
         } else if peek(&input_copy) == "(" {
-            tokens.push(Token { token_type: TokenType::OpenParen, value: None });
+            tokens.push(Token { parent_type: TokenType::BinaryOperator, token_type: TokenType::OpenParen, value: None });
             input_copy = consume(&input_copy)
 
         } else if peek(&input_copy) == ")" {
-            tokens.push(Token { token_type: TokenType::CloseParen, value: None });
+            tokens.push(Token { parent_type: TokenType::BinaryOperator, token_type: TokenType::CloseParen, value: None });
             input_copy = consume(&input_copy)
 
         } else if peek(&input_copy) == " " {
@@ -126,40 +132,46 @@ fn consume(input: &str) -> String {
 }
 
 fn evaluate_expression(expr: Vec<Token>) -> Token {
-    let mut expr_copy = Vec::from(expr);
+    let mut expr_copy: Vec<Token> = Vec::from(expr);
     let mut buffer: Vec<Token> = Vec::new();
+    let mut precedence = 3;
     while expr_copy.len() != 1 {
-        loop {
-            buffer.push(expr_copy[0]);
-            expr_copy.remove(0);
-            if buffer.len() == 3 {
-                if std::mem::discriminant(&buffer[0].token_type) == std::mem::discriminant(&TokenType::IntLit) &&
-                   (std::mem::discriminant(&buffer[1].token_type) == std::mem::discriminant(&TokenType::Plus) ||
-                   std::mem::discriminant(&buffer[1].token_type) == std::mem::discriminant(&TokenType::Minus) ||
-                   std::mem::discriminant(&buffer[1].token_type) == std::mem::discriminant(&TokenType::Multi) ||
-                   std::mem::discriminant(&buffer[1].token_type) == std::mem::discriminant(&TokenType::Div) ||
-                   std::mem::discriminant(&buffer[1].token_type) == std::mem::discriminant(&TokenType::Power)) &&
-                   std::mem::discriminant(&buffer[2].token_type) == std::mem::discriminant(&TokenType::IntLit)  {
-                    break
-                }
+        let mut see_next_precedence = true;
+        for i in 0..expr_copy.len() {
+            if expr_copy[i].parent_type == TokenType::BinaryOperator && 
+                expr_copy[i].value.unwrap_or_else(|| { panic!() }) == precedence {
+                buffer.push(expr_copy[i - 1]);
+                buffer.push(expr_copy[i]);
+                buffer.push(expr_copy[i + 1]);
+                expr_copy.remove(i + 1);
+                expr_copy.remove(i);
+                expr_copy.remove(i - 1);
+                expr_copy.insert(i-1, BinaryExpression {
+                        int_lit_1: Token {
+                            parent_type: TokenType::Literal,
+                            token_type: TokenType::IntLit,
+                            value: buffer[0].value
+                        },
+                        bin_op: Token {
+                            parent_type: TokenType::BinaryOperator, 
+                            token_type: buffer[1].token_type,
+                            value: buffer[1].value
+                        },
+                        int_lit_2: Token {
+                            parent_type: TokenType::Literal,
+                            token_type: TokenType::IntLit,
+                            value: buffer[2].value
+                        }
+                    }
+                    .evaluate_expr()
+                );
+                see_next_precedence = false;
+                buffer.clear();
+                break;
             }
         }
-        expr_copy.insert(0, BinaryExpression {
-            int_lit_1: Token {
-                token_type: IntLit,
-                value: buffer[0].value
-            },
-            bin_op: Token {
-                token_type: buffer[1].token_type,
-                value: None
-            },
-            int_lit_2: Token {
-                token_type: IntLit,
-                value: buffer[2].value
-            }
-        }.evaluate_expr());
-        buffer.clear();
+        if see_next_precedence { precedence -= 1 }
+        if precedence < 0 { break }
     }
-
     expr_copy[0]
 }
