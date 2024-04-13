@@ -1,7 +1,8 @@
 use std::cmp::PartialEq;
 
 fn main() {
-    let input = "----5 * 5".parse::<String>().unwrap();
+    // more bugs, love it!
+    let input = "-1 - 1".parse::<String>().unwrap();
     let tokens = tokenize(input);
     let answer = evaluate_expression(tokens);
     println!("{:?}", answer.value.unwrap());
@@ -9,15 +10,17 @@ fn main() {
 
 #[derive(Debug, Copy, Clone)]
 enum TokenType {
-    Null,
     BinOp,
     Literal,
     IntLit,
     Plus,
     Minus,
     Multi,
+    MultiNeg,
     Div,
+    DivNeg,
     Power,
+    PowerNeg,
     OpenParen,
     CloseParen,
 }
@@ -63,10 +66,7 @@ impl OperatorLitExpr {
         } else if self.op.t_type == TokenType::Plus {
             self.lit
         } else {
-            panic!(
-                "Invalid syntax: {:?}, {:?}",
-                self.op.t_type, self.lit.t_type
-            );
+            panic!("Invalid syntax");
         };
     }
 }
@@ -98,6 +98,60 @@ impl BinaryOperatorExpr {
                 t_type: TokenType::Minus,
                 value: Some(0),
             }
+        } else if self.op1.t_type == TokenType::Multi && self.op2.t_type == TokenType::Minus {
+            Token {
+                parent_type: TokenType::BinOp,
+                t_type: TokenType::MultiNeg,
+                value: Some(1),
+            }
+        } else if self.op1.t_type == TokenType::Div && self.op2.t_type == TokenType::Minus {
+            Token {
+                parent_type: TokenType::BinOp,
+                t_type: TokenType::DivNeg,
+                value: Some(1),
+            }
+        } else if self.op1.t_type == TokenType::Div && self.op2.t_type == TokenType::Plus {
+            Token {
+                parent_type: TokenType::BinOp,
+                t_type: TokenType::Div,
+                value: Some(1),
+            }
+        } else if self.op1.t_type == TokenType::Multi && self.op2.t_type == TokenType::Plus {
+            Token {
+                parent_type: TokenType::BinOp,
+                t_type: TokenType::Multi,
+                value: Some(1),
+            }
+        } else if self.op1.t_type == TokenType::MultiNeg && self.op2.t_type == TokenType::Minus {
+            Token {
+                parent_type: TokenType::BinOp,
+                t_type: TokenType::Multi,
+                value: Some(1),
+            }
+        } else if self.op1.t_type == TokenType::DivNeg && self.op2.t_type == TokenType::Minus {
+            Token {
+                parent_type: TokenType::BinOp,
+                t_type: TokenType::Div,
+                value: Some(1),
+            }
+        } else if self.op1.t_type == TokenType::Power && self.op2.t_type == TokenType::Minus {
+            Token {
+                parent_type: TokenType::BinOp,
+                t_type: TokenType::PowerNeg,
+                value: Some(2),
+            }
+        } else if self.op1.t_type == TokenType::Power && self.op2.t_type == TokenType::Plus {
+            Token {
+                parent_type: TokenType::BinOp,
+                t_type: TokenType::Power,
+                value: Some(2),
+            }
+        } else if self.op1.t_type == TokenType::PowerNeg && self.op2.t_type == TokenType::Minus {
+            Token {
+                parent_type: TokenType::BinOp,
+                t_type: TokenType::Power,
+                value: Some(2),
+            }
         } else {
             Token {
                 parent_type: TokenType::BinOp,
@@ -116,31 +170,49 @@ impl BinaryExpr {
             Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
-                value: Some(val1 + val2),
+                value: Some(val1 + val2)
             }
         } else if self.bin_op.t_type == TokenType::Minus {
             Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
-                value: Some(val1 - val2),
+                value: Some(val1 - val2)
             }
         } else if self.bin_op.t_type == TokenType::Multi {
             Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
-                value: Some(val1 * val2),
+                value: Some(val1 * val2)
+            }
+        } else if self.bin_op.t_type == TokenType::MultiNeg {
+            Token {
+                parent_type: TokenType::Literal,
+                t_type: TokenType::IntLit,
+                value: Some(-1 * val1 * val2)
             }
         } else if self.bin_op.t_type == TokenType::Div {
             Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
-                value: Some(val1 / val2),
+                value: Some(val1 / val2)
+            }
+        } else if self.bin_op.t_type == TokenType::DivNeg {
+            Token {
+                parent_type: TokenType::Literal,
+                t_type: TokenType::IntLit,
+                value: Some(-1 * val1 / val2)
             }
         } else if self.bin_op.t_type == TokenType::Power {
             Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
-                value: Some(val1.pow(val2 as u32)),
+                value: Some(val1.pow(val2 as u32))
+            }
+        } else if self.bin_op.t_type == TokenType::PowerNeg {
+            Token {
+                parent_type: TokenType::Literal,
+                t_type: TokenType::IntLit,
+                value: Some(1 / val1.pow(val2 as u32))
             }
         } else {
             panic!("Not implemented")
@@ -255,9 +327,7 @@ fn evaluate_expression(expr: Vec<Token>) -> Token {
                 && expr_copy[i].value.unwrap() == precedence
             {
                 buffer.clear();
-                if expr_copy[i + 1].parent_type == TokenType::BinOp
-                    && expr_copy[i + 1].value.unwrap() == 0
-                {
+                if expr_copy[i + 1].parent_type == TokenType::BinOp {
                     buffer.push(expr_copy[i]);
                     buffer.push(expr_copy[i + 1]);
                     expr_copy.remove(i + 1);
@@ -270,8 +340,11 @@ fn evaluate_expression(expr: Vec<Token>) -> Token {
                         }
                         .evaluate_expr(),
                     );
+                    if expr_copy[i].value.unwrap() >= 1 {
+                        precedence += 1;
+                    }
                     buffer.clear();
-                    continue;
+                    break;
                 }
 
                 if expr_copy[i + 1].parent_type == TokenType::Literal
@@ -290,7 +363,7 @@ fn evaluate_expression(expr: Vec<Token>) -> Token {
                         .evaluate_expr(),
                     );
                     buffer.clear();
-                    continue;
+                    break;
                 }
 
                 buffer.push(expr_copy[i - 1]);
@@ -325,17 +398,28 @@ fn evaluate_expression(expr: Vec<Token>) -> Token {
                 break;
             }
         }
+        if precedence < 0 {
+            break;
+        }
         if see_next_precedence {
             precedence -= 1
         }
     }
-    return if expr_copy.len() == 1 {
-        expr_copy[0]
-    } else {
-        Token {
-            parent_type: TokenType::Null,
-            t_type: TokenType::Null,
-            value: None,
-        }
-    };
+    buffer.clear();
+    while expr_copy.len() != 1 {
+        buffer.push(expr_copy[expr_copy.len() - 2]);
+        buffer.push(expr_copy[expr_copy.len() - 1]);
+        expr_copy.remove(expr_copy.len() - 1);
+        expr_copy.remove(expr_copy.len() - 1);
+        expr_copy.insert(
+            expr_copy.len(),
+            OperatorLitExpr {
+                op: buffer[0],
+                lit: buffer[1],
+            }
+            .evaluate_expr(),
+        );
+        buffer.clear();
+    }
+    expr_copy[0]
 }
