@@ -1,8 +1,7 @@
 use std::cmp::PartialEq;
 
 fn main() {
-    // more bugs, love it!
-    let input = "-1 - 1".parse::<String>().unwrap();
+    let input = "5 * -5 + 3 * -2".parse::<String>().unwrap(); // IT WORKS AHHHHHHHH
     let tokens = tokenize(input);
     let answer = evaluate_expression(tokens);
     println!("{:?}", answer.value.unwrap());
@@ -61,12 +60,22 @@ impl OperatorLitExpr {
             Token {
                 parent_type: TokenType::Literal,
                 t_type: self.lit.t_type,
-                value: Some(-1 * self.lit.value.unwrap()),
+                value: Some(-1 * self.lit.value.unwrap())
             }
         } else if self.op.t_type == TokenType::Plus {
             self.lit
+        } else if self.op.t_type == TokenType::IntLit {
+            BinaryExpr {
+                int_lit_1: self.op,
+                bin_op: Token {
+                    parent_type: TokenType::BinOp,
+                    t_type: TokenType::Plus,
+                    value: Some(0)
+                },
+                int_lit_2: self.lit
+            }.evaluate_expr()
         } else {
-            panic!("Invalid syntax");
+            panic!("Invalid syntax!");
         };
     }
 }
