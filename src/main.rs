@@ -60,7 +60,7 @@ impl OperatorLitExpr {
             Token {
                 parent_type: TokenType::Literal,
                 t_type: self.lit.t_type,
-                value: Some(-1 * self.lit.value.unwrap())
+                value: Some(-1 * self.lit.value.unwrap()),
             }
         } else if self.op.t_type == TokenType::Plus {
             self.lit
@@ -70,10 +70,11 @@ impl OperatorLitExpr {
                 bin_op: Token {
                     parent_type: TokenType::BinOp,
                     t_type: TokenType::Plus,
-                    value: Some(0)
+                    value: Some(0),
                 },
-                int_lit_2: self.lit
-            }.evaluate_expr()
+                int_lit_2: self.lit,
+            }
+            .evaluate_expr()
         } else {
             panic!("Invalid syntax!");
         };
@@ -179,49 +180,49 @@ impl BinaryExpr {
             Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
-                value: Some(val1 + val2)
+                value: Some(val1 + val2),
             }
         } else if self.bin_op.t_type == TokenType::Minus {
             Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
-                value: Some(val1 - val2)
+                value: Some(val1 - val2),
             }
         } else if self.bin_op.t_type == TokenType::Multi {
             Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
-                value: Some(val1 * val2)
+                value: Some(val1 * val2),
             }
         } else if self.bin_op.t_type == TokenType::MultiNeg {
             Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
-                value: Some(-1 * val1 * val2)
+                value: Some(-1 * val1 * val2),
             }
         } else if self.bin_op.t_type == TokenType::Div {
             Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
-                value: Some(val1 / val2)
+                value: Some(val1 / val2),
             }
         } else if self.bin_op.t_type == TokenType::DivNeg {
             Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
-                value: Some(-1 * val1 / val2)
+                value: Some(-1 * val1 / val2),
             }
         } else if self.bin_op.t_type == TokenType::Power {
             Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
-                value: Some(val1.pow(val2 as u32))
+                value: Some(val1.pow(val2 as u32)),
             }
         } else if self.bin_op.t_type == TokenType::PowerNeg {
             Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
-                value: Some(1 / val1.pow(val2 as u32))
+                value: Some(1 / val1.pow(val2 as u32)),
             }
         } else {
             panic!("Not implemented")
