@@ -1,7 +1,7 @@
 use std::cmp::PartialEq;
 
 fn main() {
-    let input = "5 * -5 + 3 * -2".parse::<String>().unwrap(); // IT WORKS AHHHHHHHH
+    let input = "5 * 1 -+ -2 + 2 ^  3 * -5".parse::<String>().unwrap(); // IT WORKS AHHHHHHHH
     let tokens = tokenize(input);
     let answer = evaluate_expression(tokens);
     println!("{:?}", answer.value.unwrap());
@@ -174,58 +174,53 @@ impl BinaryOperatorExpr {
 
 impl BinaryExpr {
     fn evaluate_expr(&self) -> Token {
-        let val1 = self.int_lit_1.value.unwrap_or_else(|| panic!());
-        let val2 = self.int_lit_2.value.unwrap_or_else(|| panic!());
-        return if self.bin_op.t_type == TokenType::Plus {
-            Token {
+        let val1 = self.int_lit_1.value.unwrap();
+        let val2 = self.int_lit_2.value.unwrap();
+
+        return match self.bin_op.t_type {
+            TokenType::Plus => Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
                 value: Some(val1 + val2),
-            }
-        } else if self.bin_op.t_type == TokenType::Minus {
-            Token {
+            },
+            TokenType::Minus => Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
                 value: Some(val1 - val2),
-            }
-        } else if self.bin_op.t_type == TokenType::Multi {
-            Token {
+            },
+            TokenType::Multi => Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
                 value: Some(val1 * val2),
-            }
-        } else if self.bin_op.t_type == TokenType::MultiNeg {
-            Token {
+            },
+            TokenType::MultiNeg => Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
                 value: Some(-1 * val1 * val2),
-            }
-        } else if self.bin_op.t_type == TokenType::Div {
-            Token {
+            },
+            TokenType::Div => Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
                 value: Some(val1 / val2),
-            }
-        } else if self.bin_op.t_type == TokenType::DivNeg {
-            Token {
+            },
+            TokenType::DivNeg => Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
                 value: Some(-1 * val1 / val2),
-            }
-        } else if self.bin_op.t_type == TokenType::Power {
-            Token {
+            },
+            TokenType::Power => Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
                 value: Some(val1.pow(val2 as u32)),
-            }
-        } else if self.bin_op.t_type == TokenType::PowerNeg {
-            Token {
+            },
+            TokenType::PowerNeg => Token {
                 parent_type: TokenType::Literal,
                 t_type: TokenType::IntLit,
                 value: Some(1 / val1.pow(val2 as u32)),
+            },
+            _ => {
+                panic!("Not implemented!")
             }
-        } else {
-            panic!("Not implemented")
         };
     }
 }
@@ -248,64 +243,76 @@ fn tokenize(input: String) -> Vec<Token> {
                 t_type: TokenType::IntLit,
                 value: Option::from(int_lit.parse::<i32>().unwrap()),
             });
-        } else if peek(&input_copy) == "+" {
-            // if binary operator, push the respective type and consume
-            tokens.push(Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::Plus,
-                value: Some(0),
-            });
-            input_copy = consume(&input_copy)
-        } else if peek(&input_copy) == "-" {
-            tokens.push(Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::Minus,
-                value: Some(0),
-            });
-            input_copy = consume(&input_copy)
-        } else if peek(&input_copy) == "*" {
-            tokens.push(Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::Multi,
-                value: Some(1),
-            });
-            input_copy = consume(&input_copy)
-        } else if peek(&input_copy) == "/" {
-            tokens.push(Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::Div,
-                value: Some(1),
-            });
-            input_copy = consume(&input_copy)
-        } else if peek(&input_copy) == "^" {
-            tokens.push(Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::Power,
-                value: Some(2),
-            });
-            input_copy = consume(&input_copy)
-        } else if peek(&input_copy) == "(" {
-            tokens.push(Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::OpenParen,
-                value: None,
-            });
-            input_copy = consume(&input_copy)
-        } else if peek(&input_copy) == ")" {
-            tokens.push(Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::CloseParen,
-                value: None,
-            });
-            input_copy = consume(&input_copy)
-        } else if peek(&input_copy) == " " {
-            // if whitespace, consume and do nothing
-            input_copy = consume(&input_copy)
-        } else {
-            panic!(
-                "Expected binary operator or int literal, got `{}`",
-                peek(&input_copy)
-            )
+            continue
+        }
+
+        match peek(&input_copy).as_str() {
+            "+" => {
+                tokens.push(Token {
+                    parent_type: TokenType::BinOp,
+                    t_type: TokenType::Plus,
+                    value: Some(0),
+                });
+                input_copy = consume(&input_copy)
+            }
+            "-" => {
+                tokens.push(Token {
+                    parent_type: TokenType::BinOp,
+                    t_type: TokenType::Minus,
+                    value: Some(0),
+                });
+                input_copy = consume(&input_copy)
+            }
+            "*" => {
+                tokens.push(Token {
+                    parent_type: TokenType::BinOp,
+                    t_type: TokenType::Multi,
+                    value: Some(1),
+                });
+                input_copy = consume(&input_copy)
+            }
+            "/" => {
+                tokens.push(Token {
+                    parent_type: TokenType::BinOp,
+                    t_type: TokenType::Div,
+                    value: Some(1),
+                });
+                input_copy = consume(&input_copy)
+            }
+            "^" => {
+                tokens.push(Token {
+                    parent_type: TokenType::BinOp,
+                    t_type: TokenType::Power,
+                    value: Some(2),
+                });
+                input_copy = consume(&input_copy)
+            }
+            "(" => {
+                tokens.push(Token {
+                    parent_type: TokenType::BinOp,
+                    t_type: TokenType::OpenParen,
+                    value: None,
+                });
+                input_copy = consume(&input_copy)
+            }
+            ")" => {
+                tokens.push(Token {
+                    parent_type: TokenType::BinOp,
+                    t_type: TokenType::CloseParen,
+                    value: None,
+                });
+                input_copy = consume(&input_copy)
+            }
+            " " => {
+                // if whitespace, consume and do nothing
+                input_copy = consume(&input_copy)
+            }
+            _ => {
+                panic!(
+                    "Expected binary operator or int literal, got `{}`",
+                    peek(&input_copy)
+                )
+            }
         }
     }
 
