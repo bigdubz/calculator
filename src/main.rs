@@ -1,7 +1,7 @@
 use std::cmp::PartialEq;
 
 fn main() {
-    let input = "5 * 1 -+ -2 + 2 ^  3 * -5".parse::<String>().unwrap(); // IT WORKS AHHHHHHHH
+    let input = "-5*1".parse::<String>().unwrap();
     let tokens = tokenize(input);
     let answer = evaluate_expression(tokens);
     println!("{:?}", answer.value.unwrap());
@@ -35,6 +35,75 @@ struct Token {
     parent_type: TokenType,
     t_type: TokenType,
     value: Option<i32>,
+}
+
+struct LitTokenBuilder {
+    parent_type: TokenType,
+    t_type: Option<TokenType>,
+    value: Option<i32>,
+}
+
+impl LitTokenBuilder {
+    pub fn new() -> LitTokenBuilder {
+        LitTokenBuilder {
+            parent_type: TokenType::Literal,
+            t_type: Some(TokenType::IntLit),
+            value: None,
+        }
+    }
+    pub fn set_ttype(mut self, ttype: TokenType) -> LitTokenBuilder {
+        self.t_type = Some(ttype);
+        self
+    }
+    pub fn set_val(mut self, value: i32) -> LitTokenBuilder {
+        self.value = Some(value);
+        self
+    }
+    pub fn build(self) -> Token {
+        Token {
+            parent_type: self.parent_type,
+            t_type: self.t_type.unwrap(),
+            value: self.value,
+        }
+    }
+}
+
+struct BinTokenBuilder {
+    parent_type: TokenType,
+    t_type: Option<TokenType>,
+    value: Option<i32>,
+}
+
+impl BinTokenBuilder {
+    pub fn new() -> BinTokenBuilder {
+        BinTokenBuilder {
+            parent_type: TokenType::BinOp,
+            t_type: None,
+            value: None,
+        }
+    }
+    pub fn set_ttype(mut self, ttype: TokenType) -> BinTokenBuilder {
+        self.t_type = Some(ttype);
+        match self.t_type {
+            Some(TokenType::Plus) => self.value = Some(0),
+            Some(TokenType::Minus) => self.value = Some(0),
+            Some(TokenType::Multi) => self.value = Some(1),
+            Some(TokenType::MultiNeg) => self.value = Some(1),
+            Some(TokenType::Div) => self.value = Some(1),
+            Some(TokenType::DivNeg) => self.value = Some(1),
+            Some(TokenType::Power) => self.value = Some(2),
+            Some(TokenType::PowerNeg) => self.value = Some(2),
+            _ => self.value = None,
+        }
+        self
+    }
+    pub fn build(self) -> Token {
+        Token {
+            parent_type: self.parent_type,
+            t_type: self.t_type.unwrap(),
+            value: self.value,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -83,91 +152,38 @@ impl OperatorLitExpr {
 
 impl BinaryOperatorExpr {
     fn evaluate_expr(&self) -> Token {
-        // Plus and minus
         return if self.op1.t_type == TokenType::Plus && self.op2.t_type == TokenType::Minus {
-            Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::Minus,
-                value: Some(0),
-            }
+            BinTokenBuilder::new().set_ttype(TokenType::Minus).build()
         } else if self.op1.t_type == TokenType::Plus && self.op2.t_type == TokenType::Plus {
-            Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::Plus,
-                value: Some(0),
-            }
+            BinTokenBuilder::new().set_ttype(TokenType::Plus).build()
         } else if self.op1.t_type == TokenType::Minus && self.op2.t_type == TokenType::Minus {
-            Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::Plus,
-                value: Some(0),
-            }
+            BinTokenBuilder::new().set_ttype(TokenType::Plus).build()
         } else if self.op1.t_type == TokenType::Minus && self.op2.t_type == TokenType::Plus {
-            Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::Minus,
-                value: Some(0),
-            }
+            BinTokenBuilder::new().set_ttype(TokenType::Minus).build()
         } else if self.op1.t_type == TokenType::Multi && self.op2.t_type == TokenType::Minus {
-            Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::MultiNeg,
-                value: Some(1),
-            }
+            BinTokenBuilder::new()
+                .set_ttype(TokenType::MultiNeg)
+                .build()
         } else if self.op1.t_type == TokenType::Div && self.op2.t_type == TokenType::Minus {
-            Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::DivNeg,
-                value: Some(1),
-            }
+            BinTokenBuilder::new().set_ttype(TokenType::DivNeg).build()
         } else if self.op1.t_type == TokenType::Div && self.op2.t_type == TokenType::Plus {
-            Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::Div,
-                value: Some(1),
-            }
+            BinTokenBuilder::new().set_ttype(TokenType::Div).build()
         } else if self.op1.t_type == TokenType::Multi && self.op2.t_type == TokenType::Plus {
-            Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::Multi,
-                value: Some(1),
-            }
+            BinTokenBuilder::new().set_ttype(TokenType::Multi).build()
         } else if self.op1.t_type == TokenType::MultiNeg && self.op2.t_type == TokenType::Minus {
-            Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::Multi,
-                value: Some(1),
-            }
+            BinTokenBuilder::new().set_ttype(TokenType::Multi).build()
         } else if self.op1.t_type == TokenType::DivNeg && self.op2.t_type == TokenType::Minus {
-            Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::Div,
-                value: Some(1),
-            }
+            BinTokenBuilder::new().set_ttype(TokenType::Div).build()
         } else if self.op1.t_type == TokenType::Power && self.op2.t_type == TokenType::Minus {
-            Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::PowerNeg,
-                value: Some(2),
-            }
+            BinTokenBuilder::new()
+                .set_ttype(TokenType::PowerNeg)
+                .build()
         } else if self.op1.t_type == TokenType::Power && self.op2.t_type == TokenType::Plus {
-            Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::Power,
-                value: Some(2),
-            }
+            BinTokenBuilder::new().set_ttype(TokenType::Power).build()
         } else if self.op1.t_type == TokenType::PowerNeg && self.op2.t_type == TokenType::Minus {
-            Token {
-                parent_type: TokenType::BinOp,
-                t_type: TokenType::Power,
-                value: Some(2),
-            }
+            BinTokenBuilder::new().set_ttype(TokenType::Power).build()
         } else {
-            Token {
-                parent_type: TokenType::BinOp,
-                t_type: self.op1.t_type,
-                value: self.op1.value,
-            }
+            BinTokenBuilder::new().set_ttype(self.op1.t_type).build()
         };
     }
 }
@@ -178,46 +194,18 @@ impl BinaryExpr {
         let val2 = self.int_lit_2.value.unwrap();
 
         return match self.bin_op.t_type {
-            TokenType::Plus => Token {
-                parent_type: TokenType::Literal,
-                t_type: TokenType::IntLit,
-                value: Some(val1 + val2),
-            },
-            TokenType::Minus => Token {
-                parent_type: TokenType::Literal,
-                t_type: TokenType::IntLit,
-                value: Some(val1 - val2),
-            },
-            TokenType::Multi => Token {
-                parent_type: TokenType::Literal,
-                t_type: TokenType::IntLit,
-                value: Some(val1 * val2),
-            },
-            TokenType::MultiNeg => Token {
-                parent_type: TokenType::Literal,
-                t_type: TokenType::IntLit,
-                value: Some(-1 * val1 * val2),
-            },
-            TokenType::Div => Token {
-                parent_type: TokenType::Literal,
-                t_type: TokenType::IntLit,
-                value: Some(val1 / val2),
-            },
-            TokenType::DivNeg => Token {
-                parent_type: TokenType::Literal,
-                t_type: TokenType::IntLit,
-                value: Some(-1 * val1 / val2),
-            },
-            TokenType::Power => Token {
-                parent_type: TokenType::Literal,
-                t_type: TokenType::IntLit,
-                value: Some(val1.pow(val2 as u32)),
-            },
-            TokenType::PowerNeg => Token {
-                parent_type: TokenType::Literal,
-                t_type: TokenType::IntLit,
-                value: Some(1 / val1.pow(val2 as u32)),
-            },
+            TokenType::Plus => LitTokenBuilder::new().set_val(val1 + val2).build(),
+            TokenType::Minus => LitTokenBuilder::new().set_val(val1 - val2).build(),
+            TokenType::Multi => LitTokenBuilder::new().set_val(val1 * val2).build(),
+            TokenType::MultiNeg => LitTokenBuilder::new().set_val(-1 * val1 * val2).build(),
+            TokenType::Div => LitTokenBuilder::new().set_val(val1 / val2).build(),
+            TokenType::DivNeg => LitTokenBuilder::new().set_val(-1 * val1 / val2).build(),
+            TokenType::Power => LitTokenBuilder::new()
+                .set_val(val1.pow(val2 as u32))
+                .build(),
+            TokenType::PowerNeg => LitTokenBuilder::new()
+                .set_val(1 / val1.pow(val2 as u32))
+                .build(),
             _ => {
                 panic!("Not implemented!")
             }
@@ -243,7 +231,7 @@ fn tokenize(input: String) -> Vec<Token> {
                 t_type: TokenType::IntLit,
                 value: Option::from(int_lit.parse::<i32>().unwrap()),
             });
-            continue
+            continue;
         }
 
         match peek(&input_copy).as_str() {
