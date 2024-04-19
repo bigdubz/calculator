@@ -1,7 +1,7 @@
 use std::cmp::PartialEq;
 
 fn main() {
-    let input = "-5*1".parse::<String>().unwrap();
+    let input = "7-5*-125+1".parse::<String>().unwrap();
     let tokens = tokenize(input);
     let answer = evaluate_expression(tokens);
     println!("{:?}", answer.value.unwrap());
@@ -50,10 +50,6 @@ impl LitTokenBuilder {
             t_type: Some(TokenType::IntLit),
             value: None,
         }
-    }
-    pub fn set_ttype(mut self, ttype: TokenType) -> LitTokenBuilder {
-        self.t_type = Some(ttype);
-        self
     }
     pub fn set_val(mut self, value: i32) -> LitTokenBuilder {
         self.value = Some(value);
@@ -226,69 +222,37 @@ fn tokenize(input: String) -> Vec<Token> {
                 int_lit.push(peek(&input_copy).parse().unwrap());
                 input_copy = consume(&input_copy);
             }
-            tokens.push(Token {
-                parent_type: TokenType::Literal,
-                t_type: TokenType::IntLit,
-                value: Option::from(int_lit.parse::<i32>().unwrap()),
-            });
+            tokens.push(LitTokenBuilder::new().set_val(int_lit.parse::<i32>().unwrap()).build());
             continue;
         }
 
         match peek(&input_copy).as_str() {
             "+" => {
-                tokens.push(Token {
-                    parent_type: TokenType::BinOp,
-                    t_type: TokenType::Plus,
-                    value: Some(0),
-                });
+                tokens.push(BinTokenBuilder::new().set_ttype(TokenType::Plus).build());
                 input_copy = consume(&input_copy)
             }
             "-" => {
-                tokens.push(Token {
-                    parent_type: TokenType::BinOp,
-                    t_type: TokenType::Minus,
-                    value: Some(0),
-                });
+                tokens.push(BinTokenBuilder::new().set_ttype(TokenType::Minus).build());
                 input_copy = consume(&input_copy)
             }
             "*" => {
-                tokens.push(Token {
-                    parent_type: TokenType::BinOp,
-                    t_type: TokenType::Multi,
-                    value: Some(1),
-                });
+                tokens.push(BinTokenBuilder::new().set_ttype(TokenType::Multi).build());
                 input_copy = consume(&input_copy)
             }
             "/" => {
-                tokens.push(Token {
-                    parent_type: TokenType::BinOp,
-                    t_type: TokenType::Div,
-                    value: Some(1),
-                });
+                tokens.push(BinTokenBuilder::new().set_ttype(TokenType::Div).build());
                 input_copy = consume(&input_copy)
             }
             "^" => {
-                tokens.push(Token {
-                    parent_type: TokenType::BinOp,
-                    t_type: TokenType::Power,
-                    value: Some(2),
-                });
+                tokens.push(BinTokenBuilder::new().set_ttype(TokenType::Power).build());
                 input_copy = consume(&input_copy)
             }
             "(" => {
-                tokens.push(Token {
-                    parent_type: TokenType::BinOp,
-                    t_type: TokenType::OpenParen,
-                    value: None,
-                });
+                tokens.push(BinTokenBuilder::new().set_ttype(TokenType::OpenParen).build());
                 input_copy = consume(&input_copy)
             }
             ")" => {
-                tokens.push(Token {
-                    parent_type: TokenType::BinOp,
-                    t_type: TokenType::CloseParen,
-                    value: None,
-                });
+                tokens.push(BinTokenBuilder::new().set_ttype(TokenType::CloseParen).build());
                 input_copy = consume(&input_copy)
             }
             " " => {
@@ -380,21 +344,9 @@ fn evaluate_expression(expr: Vec<Token>) -> Token {
                 expr_copy.insert(
                     i - 1,
                     BinaryExpr {
-                        int_lit_1: Token {
-                            parent_type: TokenType::Literal,
-                            t_type: TokenType::IntLit,
-                            value: buffer[0].value,
-                        },
-                        bin_op: Token {
-                            parent_type: TokenType::BinOp,
-                            t_type: buffer[1].t_type,
-                            value: buffer[1].value,
-                        },
-                        int_lit_2: Token {
-                            parent_type: TokenType::Literal,
-                            t_type: TokenType::IntLit,
-                            value: buffer[2].value,
-                        },
+                        int_lit_1: LitTokenBuilder::new().set_val(buffer[0].value.unwrap()).build(),
+                        bin_op: BinTokenBuilder::new().set_ttype(buffer[1].t_type).build(),
+                        int_lit_2: LitTokenBuilder::new().set_val(buffer[2].value.unwrap()).build(),
                     }
                     .evaluate_expr(),
                 );
