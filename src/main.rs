@@ -1,9 +1,10 @@
 use std::cmp::PartialEq;
 
 fn main() {
-    let input = "7-5*-125+1".parse::<String>().unwrap();
+    let input = "".parse::<String>().unwrap();
     let tokens = tokenize(input);
     let answer = evaluate_expression(tokens);
+
     println!("{:?}", answer.value.unwrap());
 }
 
@@ -222,7 +223,11 @@ fn tokenize(input: String) -> Vec<Token> {
                 int_lit.push(peek(&input_copy).parse().unwrap());
                 input_copy = consume(&input_copy);
             }
-            tokens.push(LitTokenBuilder::new().set_val(int_lit.parse::<i32>().unwrap()).build());
+            tokens.push(
+                LitTokenBuilder::new()
+                    .set_val(int_lit.parse::<i32>().unwrap())
+                    .build(),
+            );
             continue;
         }
 
@@ -248,11 +253,19 @@ fn tokenize(input: String) -> Vec<Token> {
                 input_copy = consume(&input_copy)
             }
             "(" => {
-                tokens.push(BinTokenBuilder::new().set_ttype(TokenType::OpenParen).build());
+                tokens.push(
+                    BinTokenBuilder::new()
+                        .set_ttype(TokenType::OpenParen)
+                        .build(),
+                );
                 input_copy = consume(&input_copy)
             }
             ")" => {
-                tokens.push(BinTokenBuilder::new().set_ttype(TokenType::CloseParen).build());
+                tokens.push(
+                    BinTokenBuilder::new()
+                        .set_ttype(TokenType::CloseParen)
+                        .build(),
+                );
                 input_copy = consume(&input_copy)
             }
             " " => {
@@ -285,23 +298,59 @@ fn consume(input: &str) -> String {
     String::from(chars.as_str())
 }
 
-fn evaluate_expression(expr: Vec<Token>) -> Token {
-    let mut expr_copy: Vec<Token> = Vec::from(expr);
+fn evaluate_parenthesis(mut parenthesis: std::slice::Iter<'_, Token>) -> Token {
+    parenthesis.next();
+    parenthesis.next_back();
+    let mut sliced = Vec::new();
+    for _i in 0..parenthesis.len() {
+        sliced.push(*parenthesis.next().unwrap())
+    }
+
+    evaluate_expression(sliced)
+}
+
+fn evaluate_expression(mut expr: Vec<Token>) -> Token {
     let mut buffer: Vec<Token> = Vec::new();
     let mut precedence = 2;
-    while expr_copy.len() > 1 {
+    while expr.len() > 1 {
         let mut see_next_precedence = true;
-        for i in 0..expr_copy.len() {
-            if expr_copy[i].parent_type == TokenType::BinOp
-                && expr_copy[i].value.unwrap() == precedence
-            {
+
+        let mut found_paren = -1;
+        for i in 0..expr.len() {
+            if expr[i].t_type == TokenType::OpenParen {
+                found_paren = i as i32;
+                break;
+            }
+        }
+        if found_paren >= 0 {
+            let mut paren_count = 0;
+            for _i in (found_paren as usize)..expr.len() {
+                if expr[found_paren as usize].t_type == TokenType::OpenParen {
+                    paren_count += 1
+                } else if expr[found_paren as usize].t_type == TokenType::CloseParen {
+                    paren_count -= 1
+                }
+                buffer.push(expr[found_paren as usize]);
+                expr.remove(found_paren as usize);
+
+                if paren_count == 0 {
+                    expr.insert(found_paren as usize, evaluate_parenthesis(buffer.iter()));
+                    buffer.clear();
+                    break;
+                }
+            }
+            continue;
+        }
+
+        for i in 0..expr.len() {
+            if expr[i].parent_type == TokenType::BinOp && expr[i].value.unwrap() == precedence {
                 buffer.clear();
-                if expr_copy[i + 1].parent_type == TokenType::BinOp {
-                    buffer.push(expr_copy[i]);
-                    buffer.push(expr_copy[i + 1]);
-                    expr_copy.remove(i + 1);
-                    expr_copy.remove(i);
-                    expr_copy.insert(
+                if expr[i + 1].parent_type == TokenType::BinOp {
+                    buffer.push(expr[i]);
+                    buffer.push(expr[i + 1]);
+                    expr.remove(i + 1);
+                    expr.remove(i);
+                    expr.insert(
                         i,
                         BinaryOperatorExpr {
                             op1: buffer[0],
@@ -309,21 +358,21 @@ fn evaluate_expression(expr: Vec<Token>) -> Token {
                         }
                         .evaluate_expr(),
                     );
-                    if expr_copy[i].value.unwrap() >= 1 {
+                    if expr[i].value.unwrap() >= 1 {
                         precedence += 1;
                     }
                     buffer.clear();
                     break;
                 }
 
-                if expr_copy[i + 1].parent_type == TokenType::Literal
-                    && (i as i32 - 1 < 0 || expr_copy[i - 1].parent_type != TokenType::Literal)
+                if expr[i + 1].parent_type == TokenType::Literal
+                    && (i as i32 - 1 < 0 || expr[i - 1].parent_type != TokenType::Literal)
                 {
-                    buffer.push(expr_copy[i]);
-                    buffer.push(expr_copy[i + 1]);
-                    expr_copy.remove(i + 1);
-                    expr_copy.remove(i);
-                    expr_copy.insert(
+                    buffer.push(expr[i]);
+                    buffer.push(expr[i + 1]);
+                    expr.remove(i + 1);
+                    expr.remove(i);
+                    expr.insert(
                         i,
                         OperatorLitExpr {
                             op: buffer[0],
@@ -334,19 +383,22 @@ fn evaluate_expression(expr: Vec<Token>) -> Token {
                     buffer.clear();
                     break;
                 }
-
-                buffer.push(expr_copy[i - 1]);
-                buffer.push(expr_copy[i]);
-                buffer.push(expr_copy[i + 1]);
-                expr_copy.remove(i + 1);
-                expr_copy.remove(i);
-                expr_copy.remove(i - 1);
-                expr_copy.insert(
+                buffer.push(expr[i - 1]);
+                buffer.push(expr[i]);
+                buffer.push(expr[i + 1]);
+                expr.remove(i + 1);
+                expr.remove(i);
+                expr.remove(i - 1);
+                expr.insert(
                     i - 1,
                     BinaryExpr {
-                        int_lit_1: LitTokenBuilder::new().set_val(buffer[0].value.unwrap()).build(),
+                        int_lit_1: LitTokenBuilder::new()
+                            .set_val(buffer[0].value.unwrap())
+                            .build(),
                         bin_op: BinTokenBuilder::new().set_ttype(buffer[1].t_type).build(),
-                        int_lit_2: LitTokenBuilder::new().set_val(buffer[2].value.unwrap()).build(),
+                        int_lit_2: LitTokenBuilder::new()
+                            .set_val(buffer[2].value.unwrap())
+                            .build(),
                     }
                     .evaluate_expr(),
                 );
@@ -362,14 +414,13 @@ fn evaluate_expression(expr: Vec<Token>) -> Token {
             precedence -= 1
         }
     }
-    buffer.clear();
-    while expr_copy.len() != 1 {
-        buffer.push(expr_copy[expr_copy.len() - 2]);
-        buffer.push(expr_copy[expr_copy.len() - 1]);
-        expr_copy.remove(expr_copy.len() - 1);
-        expr_copy.remove(expr_copy.len() - 1);
-        expr_copy.insert(
-            expr_copy.len(),
+    while expr.len() != 1 {
+        buffer.push(expr[expr.len() - 2]);
+        buffer.push(expr[expr.len() - 1]);
+        expr.remove(expr.len() - 1);
+        expr.remove(expr.len() - 1);
+        expr.insert(
+            expr.len(),
             OperatorLitExpr {
                 op: buffer[0],
                 lit: buffer[1],
@@ -378,5 +429,5 @@ fn evaluate_expression(expr: Vec<Token>) -> Token {
         );
         buffer.clear();
     }
-    expr_copy[0]
+    expr[0]
 }
