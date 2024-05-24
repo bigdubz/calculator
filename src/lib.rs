@@ -1,11 +1,8 @@
 use std::cmp::PartialEq;
 
 fn main() {
-    let input = "".parse::<String>().unwrap();
-    let tokens = tokenize(input);
-    let answer = evaluate_expression(tokens);
-
-    println!("{:?}", answer.value.unwrap());
+    let answer = evaluate_input("123*123");
+    println!("{answer}");
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -430,4 +427,10 @@ fn evaluate_expression(mut expr: Vec<Token>) -> Token {
         buffer.clear();
     }
     expr[0]
+}
+
+fn evaluate_input(input: &str) -> String {
+    let s = input.parse::<String>().unwrap();
+    let answer = evaluate_expression(tokenize(s)).value.unwrap().to_string();
+    String::from(answer)
 }
